@@ -116,7 +116,6 @@ export default function App() {
     };
     await setRating(rating);
     await refreshAllRatings();
-    // petite confirmation
     window.navigator?.vibrate?.(20);
   }
 
@@ -139,7 +138,6 @@ export default function App() {
     setTab("next");
   }
 
-  // SEARCH results
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
@@ -147,16 +145,15 @@ export default function App() {
     for (let i = 0; i < genres.length; i++) {
       const g = genres[i];
       if (g.toLowerCase().includes(q)) out.push([i, g]);
-      if (out.length >= 200) break; // limite raisonnable
+      if (out.length >= 200) break;
     }
     return out;
   }, [searchQuery, genres]);
 
-  // RANK + STATS base (exclude special)
   const scoredItems = useMemo(() => {
     const items = [];
     for (const r of allRatings) {
-      if (r?.special) continue; // exclu
+      if (r?.special) continue;
       const sc = computedScore(r?.skip ?? null, r?.kiff ?? null, !!r?.special, !!r?.flou);
       if (sc == null) continue;
       items.push({ genreId: r.genreId, name: r.name, score: sc, flou: !!r.flou });
@@ -173,7 +170,6 @@ export default function App() {
     let scoredCount = 0;
 
     const scores = [];
-
     for (const r of allRatings) {
       if (r?.special) {
         specialCount++;
@@ -189,7 +185,6 @@ export default function App() {
 
     const avg = scoredCount ? scores.reduce((a, b) => a + b, 0) / scoredCount : null;
 
-    // simple distribution 0..10 arrondie
     const buckets = Array.from({ length: 11 }, () => 0);
     for (const s of scores) {
       const k = Math.max(0, Math.min(10, Math.round(s)));
@@ -199,7 +194,6 @@ export default function App() {
     return { total, specialCount, eligible, flouCount, scoredCount, avg, buckets };
   }, [allRatings]);
 
-  // BACKUP
   async function doExport() {
     const data = await exportData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -227,6 +221,7 @@ export default function App() {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: 16, fontFamily: "system-ui" }}>
       <h2 style={{ marginBottom: 8 }}>🎧 Genre Rater</h2>
+
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <TabButton active={tab === "next"} onClick={() => setTab("next")}>Next</TabButton>
         <TabButton active={tab === "search"} onClick={() => setTab("search")}>Search</TabButton>
@@ -239,7 +234,11 @@ export default function App() {
         <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 14 }}>
           <div style={{ fontSize: 20, fontWeight: 800 }}>
             {genreName || "Chargement..."}
-            {genreName && <span style={{ fontWeight: 500, fontSize: 14, marginLeft: 10, color: "#666" }}>#{genreId}</span>}
+            {genreName && (
+              <span style={{ fontWeight: 500, fontSize: 14, marginLeft: 10, color: "#666" }}>
+                #{genreId}
+              </span>
+            )}
           </div>
 
           {url && (
@@ -293,8 +292,7 @@ export default function App() {
           </div>
 
           <div style={{ marginTop: 12, fontWeight: 800 }}>
-            Note calculée :{" "}
-            {special ? "— (exclu)" : score == null ? "—" : score.toFixed(2)}
+            Note calculée : {special ? "— (exclu)" : score == null ? "—" : score.toFixed(2)}
           </div>
 
           <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
@@ -342,9 +340,7 @@ export default function App() {
               </button>
             ))}
             {searchResults.length > 50 && (
-              <div style={{ color: "#666" }}>
-                Affiche les 50 premiers (pour éviter de surcharger).
-              </div>
+              <div style={{ color: "#666" }}>Affiche les 50 premiers (perf).</div>
             )}
           </div>
         </div>
@@ -380,9 +376,7 @@ export default function App() {
               </button>
             ))}
             {scoredItems.length > 100 && (
-              <div style={{ color: "#666" }}>
-                Affiche les 100 premiers (pour perf). On pourra ajouter pagination si tu veux.
-              </div>
+              <div style={{ color: "#666" }}>Affiche les 100 premiers (on peut paginer).</div>
             )}
           </div>
         </div>
@@ -413,19 +407,23 @@ export default function App() {
 
           <div style={{ marginTop: 12, padding: 10, border: "1px solid #eee", borderRadius: 12 }}>
             <div style={{ color: "#666" }}>Moyenne note calculée</div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>
-              {stats.avg == null ? "—" : stats.avg.toFixed(2)}
-            </div>
-            <div style={{ color: "#666", marginTop: 6 }}>
-              Flou cochés (dans non Special) : {stats.flouCount}
-            </div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{stats.avg == null ? "—" : stats.avg.toFixed(2)}</div>
+            <div style={{ color: "#666", marginTop: 6 }}>Flou cochés : {stats.flouCount}</div>
           </div>
 
           <div style={{ marginTop: 12, padding: 10, border: "1px solid #eee", borderRadius: 12 }}>
             <div style={{ fontWeight: 800, marginBottom: 8 }}>Distribution (arrondi 0–10)</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(11, 1fr)", gap: 6 }}>
               {stats.buckets.map((n, i) => (
-                <div key={i} style={{ textAlign: "center", padding: 6, border: "1px solid #f0f0f0", borderRadius: 10 }}>
+                <div
+                  key={i}
+                  style={{
+                    textAlign: "center",
+                    padding: 6,
+                    border: "1px solid #f0f0f0",
+                    borderRadius: 10,
+                  }}
+                >
                   <div style={{ fontWeight: 800 }}>{i}</div>
                   <div style={{ color: "#666" }}>{n}</div>
                 </div>
@@ -439,7 +437,7 @@ export default function App() {
         <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 14 }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>Backup</div>
           <div style={{ color: "#666", marginBottom: 12 }}>
-            Tes notes sont sur ton téléphone. Fais un export de temps en temps pour éviter toute perte (changement de tel, reset navigateur, etc.).
+            Export de temps en temps pour ne rien perdre (changement de tel, reset navigateur, etc.).
           </div>
 
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
@@ -477,7 +475,7 @@ export default function App() {
           </div>
 
           <div style={{ padding: 10, border: "1px solid #eee", borderRadius: 12, color: "#666" }}>
-            Astuce : après export, envoie le fichier dans ton cloud (Drive/iCloud) ou à toi-même.
+            Astuce : après export, mets le fichier sur Drive/iCloud.
           </div>
         </div>
       )}
@@ -487,38 +485,4 @@ export default function App() {
       </div>
     </div>
   );
-}import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
 }
-
-export default App
