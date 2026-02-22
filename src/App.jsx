@@ -19,6 +19,17 @@ function clampScoreInput(v) {
   return String(Math.trunc(n));
 }
 
+/** "Non noté" = aucun champ rempli + cases non cochées */
+function isUnrated(r) {
+  if (!r) return true;
+  const hasSkip = r.skip != null;
+  const hasKiff = r.kiff != null;
+  const hasSpecial = !!r.special;
+  const hasFlou = !!r.flou;
+  const hasComment = (r.comment ?? "").trim().length > 0;
+  return !hasSkip && !hasKiff && !hasSpecial && !hasFlou && !hasComment;
+}
+
 function TabButton({ active, onClick, children }) {
   return (
     <button
@@ -70,6 +81,12 @@ export default function App() {
     [parsedSkip, parsedKiff, special, flou]
   );
 
+  const ratingById = useMemo(() => {
+    const m = new Map();
+    for (const r of allRatings) m.set(r.genreId, r);
+    return m;
+  }, [allRatings]);
+
   async function loadCurrentRating(gid) {
     const r = await getRating(gid);
     setSkip(r?.skip == null ? "" : String(r.skip));
@@ -119,13 +136,45 @@ export default function App() {
     window.navigator?.vibrate?.(20);
   }
 
-  async function nextGenre() {
+  /** Next brut : avance juste d'une ligne */
+  async function nextRaw() {
     if (!genres.length) return;
     const ni = (idx + 1) % genres.length;
     setIdx(ni);
     setGenreId(ni);
     await setMeta("idx", ni);
     await loadCurrentRating(ni);
+  }
+
+  /** Previous brut : recule juste d'une ligne */
+  async function prevRaw() {
+    if (!genres.length) return;
+    const pi = (idx - 1 + genres.length) % genres.length; // wrap propre
+    setIdx(pi);
+    setGenreId(pi);
+    await setMeta("idx", pi);
+    await loadCurrentRating(pi);
+  }
+
+  /** Next intelligent : prochain "non noté" */
+  async function nextGenre() {
+    if (!genres.length) return;
+
+    const start = (idx + 1) % genres.length;
+
+    for (let step = 0; step < genres.length; step++) {
+      const gid = (start + step) % genres.length;
+      const r = ratingById.get(gid);
+      if (isUnrated(r)) {
+        setIdx(gid);
+        setGenreId(gid);
+        await setMeta("idx", gid);
+        await loadCurrentRating(gid);
+        return;
+      }
+    }
+
+    alert("Tous les genres ont déjà une note / case / commentaire. 🎉");
   }
 
   async function openGenreById(id) {
@@ -295,21 +344,36 @@ export default function App() {
             Note calculée : {special ? "— (exclu)" : score == null ? "—" : score.toFixed(2)}
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
+            <button
+              onClick={prevRaw}
+              style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #ddd", fontWeight: 700 }}
+            >
+              ⬅ Previous brut
+            </button>
+
             <button
               onClick={saveCurrent}
               style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #ddd", fontWeight: 700 }}
             >
               Enregistrer
             </button>
+
             <button
               onClick={async () => {
                 await saveCurrent();
-                await nextGenre();
+                await nextGenre(); // prochain NON noté
               }}
               style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #ddd", fontWeight: 700 }}
             >
-              Enregistrer + Next ➜
+              Enregistrer + Next (non noté) ➜
+            </button>
+
+            <button
+              onClick={nextRaw}
+              style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #ddd", fontWeight: 700 }}
+            >
+              Next brut ➜
             </button>
           </div>
         </div>
